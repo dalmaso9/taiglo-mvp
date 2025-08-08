@@ -1,0 +1,184 @@
+services:
+  # Database
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: taiglo_postgres
+    environment:
+      POSTGRES_DB: taiglo_db
+      POSTGRES_USER: taiglo_user
+      POSTGRES_PASSWORD: taiglo_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    networks:
+      - taiglo_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taiglo_user -d taiglo_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: taiglo_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - taiglo_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # User Service
+  user-service:
+    build:
+      context: ./user-service/user-service
+      dockerfile: Dockerfile
+    container_name: taiglo_user_service
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://taiglo_user:taiglo_password@postgres:5432/taiglo_db
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET_KEY=taiglo_jwt_secret_key_2024
+      - PORT=3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - taiglo_network
+    volumes:
+      - ./user-service/user-service/src:/app/src
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://user-service:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Experience Service
+  experience-service:
+    build:
+      context: ./experience-service/experience-service
+      dockerfile: Dockerfile
+    container_name: taiglo_experience_service
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://taiglo_user:taiglo_password@postgres:5432/taiglo_db
+      - REDIS_URL=redis://redis:6379
+      - PORT=3002
+    ports:
+      - "3002:3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - taiglo_network
+    volumes:
+      - ./experience-service/experience-service/src:/app/src
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://experience-service:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Review Service
+  review-service:
+    build:
+      context: ./review-service/review-service
+      dockerfile: Dockerfile
+    container_name: taiglo_review_service
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://taiglo_user:taiglo_password@postgres:5432/taiglo_db
+      - REDIS_URL=redis://redis:6379
+      - PORT=3004
+    ports:
+      - "3004:3004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - taiglo_network
+    volumes:
+      - ./review-service/review-service/src:/app/src
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://review-service:3004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./api-gateway/api-gateway
+      dockerfile: Dockerfile
+    container_name: taiglo_api_gateway
+    environment:
+      - FLASK_ENV=development
+      - USER_SERVICE_URL=http://localhost:3001
+      - EXPERIENCE_SERVICE_URL=http://localhost:3002
+      - REVIEW_SERVICE_URL=http://localhost:3004
+      - REDIS_URL=redis://redis:6379
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      user-service:
+        condition: service_healthy
+      experience-service:
+        condition: service_healthy
+      review-service:
+        condition: service_healthy
+    networks:
+      - taiglo_network
+    volumes:
+      - ./api-gateway/api-gateway/src:/app/src
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://api-gateway:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend/taiglo-frontend
+      dockerfile: Dockerfile
+    container_name: taiglo_frontend
+    environment:
+      - VITE_API_BASE_URL=http://localhost:3000/api
+    ports:
+      - "5173:5173"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    networks:
+      - taiglo_network
+    volumes:
+      - ./frontend/taiglo-frontend/src:/app/src
+      - ./frontend/taiglo-frontend/public:/app/public
+
+networks:
+  taiglo_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+

@@ -1,0 +1,738 @@
+{
+  "info": {
+    "name": "Taiglo MVP API",
+    "description": "Coleção completa para testar as APIs do Taiglo MVP",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "jwtToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "experienceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "categoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reviewId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Autenticação",
+      "item": [
+        {
+          "name": "Registrar Usuário",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('jwtToken', response.access_token);",
+                  "    pm.collectionVariables.set('userId', response.user.id);",
+                  "    pm.test('Usuário registrado com sucesso', () => {",
+                  "        pm.expect(response.message).to.include('sucesso');",
+                  "        pm.expect(response.access_token).to.be.a('string');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"teste{{$timestamp}}@taiglo.com\",\n  \"password\": \"senha123\",\n  \"first_name\": \"João\",\n  \"last_name\": \"Silva\",\n  \"phone\": \"(11) 99999-9999\",\n  \"bio\": \"Apaixonado por descobrir lugares únicos em São Paulo\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('jwtToken', response.access_token);",
+                  "    pm.collectionVariables.set('userId', response.user.id);",
+                  "    pm.test('Login realizado com sucesso', () => {",
+                  "        pm.expect(response.message).to.include('sucesso');",
+                  "        pm.expect(response.access_token).to.be.a('string');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"teste@taiglo.com\",\n  \"password\": \"senha123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Obter Usuário Atual",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Atualizar Perfil",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"João Carlos\",\n  \"last_name\": \"Silva Santos\",\n  \"phone\": \"(11) 88888-8888\",\n  \"bio\": \"Explorador urbano e foodie\",\n  \"date_of_birth\": \"1990-05-15\",\n  \"preferences\": {\n    \"favorite_categories\": [\"cafes\", \"restaurants\"],\n    \"price_range\": [2, 4]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Categorias",
+      "item": [
+        {
+          "name": "Listar Categorias",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.categories && response.categories.length > 0) {",
+                  "        pm.collectionVariables.set('categoryId', response.categories[0].id);",
+                  "    }",
+                  "    pm.test('Categorias listadas com sucesso', () => {",
+                  "        pm.expect(response.categories).to.be.an('array');",
+                  "        pm.expect(response.total).to.be.a('number');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories"]
+            }
+          }
+        },
+        {
+          "name": "Obter Categoria Específica",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "{{categoryId}}"]
+            }
+          }
+        },
+        {
+          "name": "Criar Categoria",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Padarias\",\n  \"description\": \"Padarias artesanais e confeitarias especiais\",\n  \"icon_url\": \"/icons/bakery.svg\",\n  \"color_hex\": \"#D2691E\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Experiências",
+      "item": [
+        {
+          "name": "Listar Experiências",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.experiences && response.experiences.length > 0) {",
+                  "        pm.collectionVariables.set('experienceId', response.experiences[0].id);",
+                  "    }",
+                  "    pm.test('Experiências listadas com sucesso', () => {",
+                  "        pm.expect(response.experiences).to.be.an('array');",
+                  "        pm.expect(response.pagination).to.be.an('object');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/experiences?page=1&per_page=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["experiences"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Buscar Experiências Próximas",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/experiences/nearby?latitude=-23.5618&longitude=-46.6918&radius_km=5&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["experiences", "nearby"],
+              "query": [
+                {
+                  "key": "latitude",
+                  "value": "-23.5618"
+                },
+                {
+                  "key": "longitude",
+                  "value": "-46.6918"
+                },
+                {
+                  "key": "radius_km",
+                  "value": "5"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obter Experiência Específica",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/experiences/{{experienceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["experiences", "{{experienceId}}"]
+            }
+          }
+        },
+        {
+          "name": "Criar Experiência",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('experienceId', response.experience.id);",
+                  "    pm.test('Experiência criada com sucesso', () => {",
+                  "        pm.expect(response.message).to.include('sucesso');",
+                  "        pm.expect(response.experience.id).to.be.a('string');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Café Teste Postman\",\n  \"description\": \"Um café criado via Postman para testar o sistema\",\n  \"category_id\": \"{{categoryId}}\",\n  \"address\": \"R. Augusta, 1234 - Consolação, São Paulo - SP\",\n  \"latitude\": -23.5505,\n  \"longitude\": -46.6333,\n  \"phone\": \"(11) 3333-4444\",\n  \"website_url\": \"https://cafeteste.com.br\",\n  \"instagram_handle\": \"@cafeteste_sp\",\n  \"opening_hours\": {\n    \"seg-sex\": \"07:00-18:00\",\n    \"sab-dom\": \"08:00-17:00\"\n  },\n  \"price_range\": 2,\n  \"is_hidden_gem\": true,\n  \"created_by\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/experiences",
+              "host": ["{{baseUrl}}"],
+              "path": ["experiences"]
+            }
+          }
+        },
+        {
+          "name": "Atualizar Experiência",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Café Teste Postman - Atualizado\",\n  \"description\": \"Um café criado via Postman para testar o sistema - versão atualizada\",\n  \"phone\": \"(11) 3333-5555\",\n  \"price_range\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/experiences/{{experienceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["experiences", "{{experienceId}}"]
+            }
+          }
+        },
+        {
+          "name": "Filtrar por Categoria",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/experiences?category_id={{categoryId}}&sort_by=rating&sort_order=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["experiences"],
+              "query": [
+                {
+                  "key": "category_id",
+                  "value": "{{categoryId}}"
+                },
+                {
+                  "key": "sort_by",
+                  "value": "rating"
+                },
+                {
+                  "key": "sort_order",
+                  "value": "desc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Buscar por Texto",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/experiences?search=café&page=1&per_page=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["experiences"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "café"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "5"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Avaliações",
+      "item": [
+        {
+          "name": "Listar Avaliações",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.reviews && response.reviews.length > 0) {",
+                  "        pm.collectionVariables.set('reviewId', response.reviews[0].id);",
+                  "    }",
+                  "    pm.test('Avaliações listadas com sucesso', () => {",
+                  "        pm.expect(response.reviews).to.be.an('array');",
+                  "        pm.expect(response.pagination).to.be.an('object');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/reviews?page=1&per_page=10&include_user_info=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "10"
+                },
+                {
+                  "key": "include_user_info",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obter Avaliação Específica",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}?include_user_info=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{reviewId}}"],
+              "query": [
+                {
+                  "key": "include_user_info",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Criar Avaliação",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('reviewId', response.review.id);",
+                  "    pm.test('Avaliação criada com sucesso', () => {",
+                  "        pm.expect(response.message).to.include('sucesso');",
+                  "        pm.expect(response.review.id).to.be.a('string');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"experience_id\": \"{{experienceId}}\",\n  \"user_id\": \"{{userId}}\",\n  \"rating\": 5,\n  \"title\": \"Experiência incrível via Postman!\",\n  \"content\": \"Testei este lugar através do Postman e foi uma experiência fantástica. O café estava delicioso, o atendimento foi excepcional e o ambiente muito aconchegante. Recomendo fortemente para quem busca um lugar especial para relaxar.\",\n  \"photos\": [\n    \"https://exemplo.com/foto1.jpg\",\n    \"https://exemplo.com/foto2.jpg\"\n  ],\n  \"visit_date\": \"2024-01-14\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            }
+          }
+        },
+        {
+          "name": "Atualizar Avaliação",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"title\": \"Experiência muito boa - Atualizada\",\n  \"content\": \"Após uma segunda visita, mantenho minha avaliação positiva, mas com algumas ressalvas. O café continua excelente, mas o atendimento estava um pouco mais lento desta vez.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{reviewId}}"]
+            }
+          }
+        },
+        {
+          "name": "Votar se Review é Útil",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{userId}}\",\n  \"is_helpful\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}/helpful",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{reviewId}}", "helpful"]
+            }
+          }
+        },
+        {
+          "name": "Avaliações de uma Experiência",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/reviews?experience_id={{experienceId}}&include_user_info=true&sort_by=helpful_votes&sort_order=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"],
+              "query": [
+                {
+                  "key": "experience_id",
+                  "value": "{{experienceId}}"
+                },
+                {
+                  "key": "include_user_info",
+                  "value": "true"
+                },
+                {
+                  "key": "sort_by",
+                  "value": "helpful_votes"
+                },
+                {
+                  "key": "sort_order",
+                  "value": "desc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Estatísticas de Reviews",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/experiences/{{experienceId}}/reviews/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["experiences", "{{experienceId}}", "reviews", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Rotas Combinadas",
+      "item": [
+        {
+          "name": "Experiência Completa",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/experiences/{{experienceId}}/full",
+              "host": ["{{baseUrl}}"],
+              "path": ["experiences", "{{experienceId}}", "full"]
+            }
+          }
+        },
+        {
+          "name": "Busca Unificada",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/search?q=café",
+              "host": ["{{baseUrl}}"],
+              "path": ["search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "café"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Monitoramento",
+      "item": [
+        {
+          "name": "Health Check Gateway",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:3000/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Health Check Todos os Serviços",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:3000/services/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["services", "health"]
+            }
+          }
+        },
+        {
+          "name": "Health Check User Service",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://user-service:3001/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3001",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Health Check Experience Service",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://experience-service:3002/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3002",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Health Check Review Service",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://review-service:3004/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3004",
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ]
+}
+
