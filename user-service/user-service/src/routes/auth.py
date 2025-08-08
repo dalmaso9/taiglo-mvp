@@ -1,10 +1,12 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app as app
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from src.models.user import User, db
+from werkzeug.security import check_password_hash
 from datetime import timedelta
 import re
+import traceback
 
-auth_bp = Blueprint('auth', __name__)
+auth_bp = Blueprint('auth', __name__, url_prefix="/api/auth")
 
 def validate_email(email):
     """Valida formato do email"""
@@ -76,6 +78,8 @@ def login():
     """Autentica um usuário"""
     try:
         data = request.get_json()
+        if not isinstance(data, dict):
+            return jsonify({"error": "Payload JSON inválido"}), 400
         
         # Validar campos obrigatórios
         if not data.get('email') or not data.get('password'):
@@ -100,6 +104,8 @@ def login():
         }), 200
         
     except Exception as e:
+        app.logger.error("Erro no login: %s", e)
+        app.logger.error(traceback.format_exc())
         return jsonify({'error': 'Erro interno do servidor'}), 500
 
 @auth_bp.route('/me', methods=['GET'])

@@ -25,7 +25,9 @@ class User(db.Model):
     
     def set_password(self, password):
         """Hash e armazena a senha do usuário"""
-        self.password_hash = generate_password_hash(password)
+        #self.password_hash = generate_password_hash(password)
+        self.password_hash = generate_password_hash(password, method='bcrypt')
+
     
     def check_password(self, password):
         """Verifica se a senha fornecida está correta"""
