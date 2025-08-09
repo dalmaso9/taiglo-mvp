@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import uuid
+import bcrypt
 
 db = SQLAlchemy()
 
@@ -25,14 +26,21 @@ class User(db.Model):
     
     def set_password(self, password):
         """Hash e armazena a senha do usuário"""
-        #self.password_hash = generate_password_hash(password)
-        self.password_hash = generate_password_hash(password, method='bcrypt')
+        self.password_hash = generate_password_hash(password)
+   
+    def check_password(self, password: str) -> bool:
+        """Verifica senha suportando bcrypt ($2b$...) e hashes do Werkzeug (scrypt/pbkdf2)"""
+        h = (self.password_hash or "").strip()
+        try:
+            # bcrypt gerado externamente (ex.: seed.sql) começa com $2b$ (ou $2a$)
+            if h.startswith("$2b$") or h.startswith("$2a$"):
+                return bcrypt.checkpw(password.encode("utf-8"), h.encode("utf-8"))
+            # hashes do Werkzeug: "method$salt$hash" (scrypt/pbkdf2)
+            return check_password_hash(h, password)
+        except Exception:
+            # nunca deixe estourar aqui — credencial errada retorna False
+            return False
 
-    
-    def check_password(self, password):
-        """Verifica se a senha fornecida está correta"""
-        return check_password_hash(self.password_hash, password)
-    
     def to_dict(self, include_sensitive=False):
         """Converte o usuário para dicionário"""
         user_dict = {

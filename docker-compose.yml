@@ -75,6 +75,7 @@ services:
     container_name: taiglo_experience_service
     environment:
       - FLASK_ENV=development
+      - LOG_LEVEL=DEBUG
       - DATABASE_URL=postgresql://taiglo_user:taiglo_password@postgres:5432/taiglo_db
       - REDIS_URL=redis://redis:6379
       - PORT=3002
