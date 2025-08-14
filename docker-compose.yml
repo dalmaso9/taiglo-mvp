@@ -41,7 +41,7 @@ services:
   # User Service
   user-service:
     build:
-      context: ./user-service/user-service
+      context: ./user-service
       dockerfile: Dockerfile
     container_name: taiglo_user_service
     environment:
@@ -60,7 +60,7 @@ services:
     networks:
       - taiglo_network
     volumes:
-      - ./user-service/user-service/src:/app/src
+      - ./user-service/src:/app/src
     healthcheck:
       test: ["CMD", "curl", "-f", "http://user-service:3001/health"]
       interval: 30s
@@ -70,7 +70,7 @@ services:
   # Experience Service
   experience-service:
     build:
-      context: ./experience-service/experience-service
+      context: ./experience-service
       dockerfile: Dockerfile
     container_name: taiglo_experience_service
     environment:
@@ -89,7 +89,7 @@ services:
     networks:
       - taiglo_network
     volumes:
-      - ./experience-service/experience-service/src:/app/src
+      - ./experience-service/src:/app/src
     healthcheck:
       test: ["CMD", "curl", "-f", "http://experience-service:3002/health"]
       interval: 30s
@@ -99,7 +99,7 @@ services:
   # Review Service
   review-service:
     build:
-      context: ./review-service/review-service
+      context: ./review-service
       dockerfile: Dockerfile
     container_name: taiglo_review_service
     environment:
@@ -117,7 +117,7 @@ services:
     networks:
       - taiglo_network
     volumes:
-      - ./review-service/review-service/src:/app/src
+      - ./review-service/src:/app/src
     healthcheck:
       test: ["CMD", "curl", "-f", "http://review-service:3004/health"]
       interval: 30s
@@ -127,7 +127,7 @@ services:
   # API Gateway
   api-gateway:
     build:
-      context: ./api-gateway/api-gateway
+      context: ./api-gateway
       dockerfile: Dockerfile
     container_name: taiglo_api_gateway
     environment:
@@ -149,7 +149,7 @@ services:
     networks:
       - taiglo_network
     volumes:
-      - ./api-gateway/api-gateway/src:/app/src
+      - ./api-gateway/src:/app/src
     healthcheck:
       test: ["CMD", "curl", "-f", "http://api-gateway:3000/health"]
       interval: 30s
@@ -159,7 +159,7 @@ services:
   # Frontend
   frontend:
     build:
-      context: ./frontend/taiglo-frontend
+      context: ./frontend
       dockerfile: Dockerfile
     container_name: taiglo_frontend
     environment:
@@ -172,8 +172,8 @@ services:
     networks:
       - taiglo_network
     volumes:
-      - ./frontend/taiglo-frontend/src:/app/src
-      - ./frontend/taiglo-frontend/public:/app/public
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
 
 networks:
   taiglo_network:

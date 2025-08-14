@@ -1,1 +1,0 @@
-Para subir a pasta segregada
