@@ -1,7 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from src.models.experience import Experience, ExperienceCategory, db
 from datetime import datetime
 import uuid
+from geoalchemy2.elements import WKTElement
 
 experience_bp = Blueprint('experience', __name__)
 
@@ -191,7 +192,10 @@ def create_experience():
             
             if not (-180 <= longitude <= 180):
                 return jsonify({'error': 'Longitude deve estar entre -180 e 180'}), 400
-                
+
+            # depois de validar latitude/longitude como float:
+            point = WKTElement(f'POINT({longitude} {latitude})', srid=4326)
+          
         except (ValueError, TypeError):
             return jsonify({'error': 'Latitude e longitude devem ser números válidos'}), 400
         
@@ -207,8 +211,7 @@ def create_experience():
             description=data['description'].strip(),
             category_id=data.get('category_id'),
             address=data['address'].strip(),
-            latitude=latitude,
-            longitude=longitude,
+            location=point,
             phone=data.get('phone', '').strip() if data.get('phone') else None,
             website_url=data.get('website_url', '').strip() if data.get('website_url') else None,
             instagram_handle=data.get('instagram_handle', '').strip() if data.get('instagram_handle') else None,
@@ -228,7 +231,10 @@ def create_experience():
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Erro interno do servidor'}), 500
+        current_app.logger.exception("create_experience failed")
+        # Em desenvolvimento, retorne o erro para ver a causa:
+        return jsonify({'error': str(e)}), 500
+        #return jsonify({'error': 'Erro interno do servidor'}), 500
 
 @experience_bp.route('/experiences/<experience_id>', methods=['PUT'])
 def update_experience(experience_id):

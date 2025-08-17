@@ -16,33 +16,39 @@
     </style>
 </head>
 <body>
-    <h1>User API Test</h1>
+    <h1>Experience & Category API Test</h1>
 
-    <!-- Get All Users -->
+    <!-- Get All Experiences -->
     <div class="section">
-        <h2>Get All Users (GET /users)</h2>
-        <button onclick="getUsers()">Get Users</button>
-        <pre id="get-users-result"></pre>
+        <h2>Get All Experiences (GET /experiences)</h2>
+        <button onclick="getexperiences()">Get Experiences</button>
+        <pre id="get-experiences-result"></pre>
     </div>
 
-    <!-- Create User -->
+    <!-- Create Experience -->
     <div class="section">
-        <h2>Create User (POST /users)</h2>
-        <label for="create-username">Username:</label>
-        <input type="text" id="create-username" name="username"><br>
-        <label for="create-email">Email:</label>
-        <input type="email" id="create-email" name="email"><br>
-        <button onclick="createUser()">Create User</button>
-        <pre id="create-user-result"></pre>
+        <h2>Create Experience (POST /experiences)</h2>
+        <label for="create-experience">Experience:</label>
+        <input type="text" id="create-experience" name="name"><br>
+        <label for="create-description">Description:</label>
+        <input type="description" id="create-description" name="description"><br>
+        <label for="create-address">Address:</label>
+        <input type="address" id="create-address" name="address"><br>
+        <label for="create-latitude">Latitude:</label>
+        <input type="latitude" id="create-latitude" name="latitude"><br>
+        <label for="create-longitude">Longitude:</label>
+        <input type="longitude" id="create-longitude" name="longitude"><br>
+        <button onclick="createexperience()">Create Experience</button>
+        <pre id="create-experience-result"></pre>
     </div>
 
-    <!-- Get Single User -->
+    <!-- Get Single Experience -->
     <div class="section">
-        <h2>Get Single User (GET /users/&lt;id&gt;)</h2>
-        <label for="get-user-id">User ID:</label>
-        <input type="number" id="get-user-id" name="user_id"><br>
-        <button onclick="getUser()">Get User</button>
-        <pre id="get-user-result"></pre>
+        <h2>Get Single Experience (GET /experiences/&lt;id&gt;)</h2>
+        <label for="get-experience-id">Experience ID:</label>
+        <input type="number" id="get-experience-id" name="experience_id"><br>
+        <button onclick="getexperience()">Get Experience</button>
+        <pre id="get-experience-result"></pre>
     </div>
 
     <!-- Update User -->
@@ -68,7 +74,8 @@
     </div>
 
     <script>
-        const API_BASE_URL = '/api/users';
+        const EXP_API = '/api/experiences';
+        const CAT_API = '/api/categories';
 
         // Helper function to display results
         function displayResult(elementId, data) {
@@ -80,11 +87,11 @@
             document.getElementById(elementId).textContent = `Error: ${error.message || error}`;
         }
 
-        // GET /users
-        async function getUsers() {
-            const resultElementId = 'get-users-result';
+        // GET /Experiences
+        async function getexperiences() {
+            const resultElementId = 'get-experience-result';
             try {
-                const response = await fetch(API_BASE_URL);
+                const response = await fetch(EXP_API);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
                 displayResult(resultElementId, data);
@@ -93,31 +100,49 @@
             }
         }
 
-        // POST /users
-        async function createUser() {
-            const resultElementId = 'create-user-result';
-            const username = document.getElementById('create-username').value;
-            const email = document.getElementById('create-email').value;
-            if (!username || !email) {
-                displayError(resultElementId, 'Username and email cannot be empty');
+        // POST /experiences
+        async function createexperience() {
+            const resultElementId = 'create-experience-result';
+            const name = document.getElementById('create-experience').value;
+            const description = document.getElementById('create-description').value;
+            const address = document.getElementById('create-address').value;
+            const latitude = document.getElementById('create-latitude').value;
+            const longitude = document.getElementById('create-longitude').value;
+            if (!name || !description || !address || !latitude || !longitude) {
+                displayError(resultElementId, 'Experience, description, address, latitude and longitude cannot be empty');
                 return;
             }
             try {
-                const response = await fetch(API_BASE_URL, {
+                const response = await fetch(EXP_API, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email })
+                    body: JSON.stringify({ name, description, address, latitude, longitude })
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || `HTTP error! status: ${response.status}`);
                 displayResult(resultElementId, data);
                 // 清空输入框
-                document.getElementById('create-username').value = '';
-                document.getElementById('create-email').value = '';
+                document.getElementById('create-experience').value = '';
+                document.getElementById('create-description').value = '';
+                document.getElementById('create-address').value = '';
+                document.getElementById('create-latitude').value = '';
+                document.getElementById('create-longitude').value = '';
             } catch (error) {
                 displayError(resultElementId, error);
             }
         }
+
+        // async function createExperience() {
+        //     const body = {
+        //     name: document.getElementById('exp-name').value,
+        //     description: document.getElementById('exp-desc').value,
+        //     category_id: document.getElementById('exp-category-id').value || null,
+        //     // ...outros campos que seu schema aceitar (latitude, longitude, etc.)
+        //     };
+        //     const res = await fetch(EXP_API, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+        //     const data = await res.json();
+        //     document.getElementById('exp-result').textContent = JSON.stringify(data, null, 2);
+        // }
 
         // GET /users/<id>
         async function getUser() {

@@ -2,6 +2,8 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from sqlalchemy import func, text
 import uuid
+from geoalchemy2 import Geometry
+from geoalchemy2.elements import WKTElement
 
 db = SQLAlchemy()
 
@@ -44,8 +46,7 @@ class Experience(db.Model):
     address = db.Column(db.Text, nullable=False)
     
     # Coordenadas geográficas (lat, lng)
-    #latitude = db.Column(db.Float, nullable=False)
-    #longitude = db.Column(db.Float, nullable=False)
+    location = db.Column(Geometry(geometry_type='POINT', srid=4326), nullable=False)
     
     phone = db.Column(db.String(20))
     website_url = db.Column(db.Text)
@@ -62,6 +63,9 @@ class Experience(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def to_dict(self, include_distance=False, distance=None):
+        # Extrai x=lon, y=lat do POINT
+        lon = db.session.scalar(func.ST_X(self.location))
+        lat = db.session.scalar(func.ST_Y(self.location))
         experience_dict = {
             'id': self.id,
             'name': self.name,
@@ -69,10 +73,7 @@ class Experience(db.Model):
             'category_id': self.category_id,
             'category': self.category.to_dict() if self.category else None,
             'address': self.address,
-            #'coordinates': {
-            #    'latitude': self.latitude,
-            #    'longitude': self.longitude
-            #},
+            'coordinates': {'latitude': lat, 'longitude': lon},
             'phone': self.phone,
             'website_url': self.website_url,
             'instagram_handle': self.instagram_handle,
@@ -87,7 +88,7 @@ class Experience(db.Model):
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
-        
+   
         if include_distance and distance is not None:
             experience_dict['distance_km'] = round(distance, 2)
             
