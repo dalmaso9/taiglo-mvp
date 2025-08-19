@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flasgger import Swagger, swag_from
 from src.models.user import db
 from src.routes.user import user_bp
 from src.routes.auth import auth_bp
@@ -19,6 +20,50 @@ CORS(app, origins="*")
 
 # Configurar JWT
 jwt = JWTManager(app)
+
+# Configurar Swagger
+swagger_config = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": 'apispec_1',
+            "route": '/apispec_1.json',
+            "rule_filter": lambda rule: True,
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/apidocs/"
+}
+
+swagger_template = {
+    "swagger": "2.0",
+    "info": {
+        "title": "Taiglo User Service",
+        "description": "API para gerenciamento de usuários do sistema Taiglo",
+        "version": "1.0.0",
+        "contact": {
+            "name": "Taiglo Team",
+            "email": "support@taiglo.com"
+        }
+    },
+    "host": "localhost:3001",
+    "basePath": "/api",
+    "schemes": ["http", "https"],
+    "consumes": ["application/json"],
+    "produces": ["application/json"],
+    "securityDefinitions": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\""
+        }
+    }
+}
+
+swagger = Swagger(app, config=swagger_config, template=swagger_template)
 
 # Registrar blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
@@ -48,6 +93,20 @@ def serve(path):
             return "index.html not found", 404
 
 @app.route('/health')
+@swag_from({
+    'responses': {
+        200: {
+            'description': 'Serviço saudável',
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'status': {'type': 'string'},
+                    'service': {'type': 'string'}
+                }
+            }
+        }
+    }
+})
 def health_check():
     return {'status': 'healthy', 'service': 'user-service'}, 200
 

@@ -23,32 +23,32 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState('created_at')
 
   // ---- Form de importação (React Hook Form) ----
-  const importForm = useForm({ defaultValues: { excelFile: null } })
+  //const importForm = useForm({ defaultValues: { excelFile: null } })
 
-  const onImportSubmit = importForm.handleSubmit(async (values) => {
-    if (!values.excelFile) {
-      alert("Selecione um arquivo Excel.");
-      return;
-  }
-  const fd = new FormData();
-  fd.append("file", values.excelFile);
+  //const onImportSubmit = importForm.handleSubmit(async (values) => {
+  //  if (!values.excelFile) {
+  //    alert("Selecione um arquivo Excel.");
+  //    return;
+  //}
+  //const fd = new FormData();
+  //fd.append("file", values.excelFile);
 
-  const res = await fetch(`${API_BASE_URL}/experiences/import-xlsx`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
-    body: fd,
-  });
+  //const res = await fetch(`${API_BASE_URL}/experiences/import-xlsx`, {
+  //  method: "POST",
+  //  headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+  //  body: fd,
+  //});
 
-  if (!res.ok) {
-    const msg = await res.text();
-    alert("Falha na importação: " + msg);
-    return;
-  }
+  //if (!res.ok) {
+  //  const msg = await res.text();
+  //  alert("Falha na importação: " + msg);
+  //  return;
+  //}
 
-  alert("Importado com sucesso!");
-  importForm.reset({ excelFile: null });
-  fetchExperiences(); // recarrega a lista
-});
+  //alert("Importado com sucesso!");
+  //importForm.reset({ excelFile: null });
+  //fetchExperiences(); // recarrega a lista
+  //});
 
   useEffect(() => {
     fetchCategories()
@@ -196,7 +196,7 @@ export default function Dashboard() {
       </Card>
 
       {/* Importar via planilha */}
-    <Card className="mb-8">
+    {/*<Card className="mb-8">
       <CardHeader>
         <CardTitle>Importar experiências via planilha</CardTitle>
         <CardDescription>
@@ -218,7 +218,7 @@ export default function Dashboard() {
           </form>
         </Form>
       </CardContent>
-    </Card>
+    </Card>*/}
 
 
       {/* Quick Actions */}

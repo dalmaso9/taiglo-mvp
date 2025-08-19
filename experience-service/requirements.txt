@@ -5,3 +5,4 @@ psycopg2-binary==2.9.7
 Werkzeug==2.3.7
 python-dotenv==1.0.0
 geoalchemy2>=0.14.3
+flasgger==0.9.7.1
