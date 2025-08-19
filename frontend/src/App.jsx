@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard'
 import ExperienceMap from './components/ExperienceMap'
 import ExperienceDetails from './components/ExperienceDetails'
 import Profile from './components/Profile'
+import AdminPanel from './components/AdminPanel'
 import Navigation from './components/Navigation'
 import { Toaster } from '@/components/ui/sonner'
 import './App.css'
@@ -40,6 +41,7 @@ function AppContent() {
                 <Route path="/map" element={<ExperienceMap />} />
                 <Route path="/experience/:id" element={<ExperienceDetails />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/admin" element={<AdminPanel />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </>
             )}

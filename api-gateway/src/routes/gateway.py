@@ -690,3 +690,115 @@ def unified_search():
     except Exception as e:
         return jsonify({'error': 'Erro na busca unificada'}), 500
 
+# ==================== ROTAS DE ADMIN ====================
+
+@gateway_bp.route('/admin/experiences/bulk-upload', methods=['POST'])
+@swag_from({
+    'tags': ['Admin'],
+    'summary': 'Upload em lote de experiências via planilha',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {
+            'name': 'file',
+            'in': 'formData',
+            'type': 'file',
+            'required': True,
+            'description': 'Arquivo Excel (.xlsx, .xls) ou CSV (.csv)'
+        },
+        {
+            'name': 'created_by',
+            'in': 'query',
+            'type': 'string',
+            'description': 'ID do admin que fez o upload'
+        }
+    ],
+    'responses': {
+        201: {'description': 'Upload concluído com sucesso'},
+        400: {'description': 'Arquivo inválido ou dados incorretos'},
+        401: {'description': 'Token inválido'},
+        403: {'description': 'Acesso negado - apenas admins'},
+        500: {'description': 'Erro interno'}
+    }
+})
+def admin_bulk_upload_experiences():
+    """Upload em lote de experiências via planilha"""
+    return proxy_request(SERVICES['experience'], '/api/admin/experiences/bulk-upload', 'POST')
+
+@gateway_bp.route('/admin/experiences/template', methods=['GET'])
+@swag_from({
+    'tags': ['Admin'],
+    'summary': 'Obter template para upload de experiências',
+    'security': [{'Bearer': []}],
+    'responses': {
+        200: {'description': 'Template de upload'},
+        401: {'description': 'Token inválido'},
+        403: {'description': 'Acesso negado - apenas admins'}
+    }
+})
+def admin_get_upload_template():
+    """Retorna template para upload de experiências"""
+    return proxy_request(SERVICES['experience'], '/api/admin/experiences/template', 'GET')
+
+@gateway_bp.route('/admin/experiences/<experience_id>', methods=['PUT'])
+@swag_from({
+    'tags': ['Admin'],
+    'summary': 'Atualizar experiência (rota de admin)',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {'name': 'experience_id', 'in': 'path', 'type': 'string', 'required': True},
+        {
+            'name': 'body',
+            'in': 'body',
+            'required': True,
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'name': {'type': 'string'},
+                    'description': {'type': 'string'},
+                    'category_id': {'type': 'string'},
+                    'address': {'type': 'string'},
+                    'latitude': {'type': 'number'},
+                    'longitude': {'type': 'number'},
+                    'phone': {'type': 'string'},
+                    'website_url': {'type': 'string'},
+                    'instagram_handle': {'type': 'string'},
+                    'opening_hours': {'type': 'object'},
+                    'price_range': {'type': 'integer'},
+                    'is_hidden_gem': {'type': 'boolean'},
+                    'is_verified': {'type': 'boolean'},
+                    'is_active': {'type': 'boolean'}
+                }
+            }
+        }
+    ],
+    'responses': {
+        200: {'description': 'Experiência atualizada'},
+        400: {'description': 'Dados inválidos'},
+        401: {'description': 'Token inválido'},
+        403: {'description': 'Acesso negado - apenas admins'},
+        404: {'description': 'Experiência não encontrada'}
+    }
+})
+def admin_update_experience(experience_id):
+    """Atualiza uma experiência (rota de admin)"""
+    return proxy_request(SERVICES['experience'], f'/api/admin/experiences/{experience_id}', 'PUT')
+
+@gateway_bp.route('/admin/experiences/<experience_id>', methods=['DELETE'])
+@swag_from({
+    'tags': ['Admin'],
+    'summary': 'Deletar experiência (rota de admin)',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {'name': 'experience_id', 'in': 'path', 'type': 'string', 'required': True}
+    ],
+    'responses': {
+        200: {'description': 'Experiência deletada'},
+        401: {'description': 'Token inválido'},
+        403: {'description': 'Acesso negado - apenas admins'},
+        404: {'description': 'Experiência não encontrada'}
+    }
+})
+def admin_delete_experience(experience_id):
+    """Deleta uma experiência (rota de admin)"""
+    return proxy_request(SERVICES['experience'], f'/api/admin/experiences/{experience_id}', 'DELETE')
+

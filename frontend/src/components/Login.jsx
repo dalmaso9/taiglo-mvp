@@ -107,7 +107,7 @@ export default function Login() {
         </Card>
 
         {/* Conta de Teste */}
-        <Card className="bg-amber-50 border-amber-200">
+        {/* <Card className="bg-amber-50 border-amber-200">
           <CardContent className="pt-6">
             <div className="flex items-center space-x-2 mb-2">
               <Coffee className="h-4 w-4 text-amber-600" />
@@ -121,7 +121,7 @@ export default function Login() {
               <p><strong>Senha:</strong> senha123</p>
             </div>
           </CardContent>
-        </Card>
+        </Card>*/}
       </div>
     </div>
   )

@@ -3,6 +3,9 @@ from src.models.experience import Experience, ExperienceCategory, db
 from datetime import datetime
 import uuid
 from geoalchemy2.elements import WKTElement
+import pandas as pd
+import io
+import os
 
 experience_bp = Blueprint('experience', __name__)
 
@@ -292,6 +295,253 @@ def update_experience(experience_id):
 @experience_bp.route('/experiences/<experience_id>', methods=['DELETE'])
 def delete_experience(experience_id):
     """Deleta uma experiência"""
+    try:
+        experience = Experience.query.get(experience_id)
+        
+        if not experience:
+            return jsonify({'error': 'Experiência não encontrada'}), 404
+        
+        db.session.delete(experience)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Experiência deletada com sucesso'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Erro interno do servidor'}), 500
+
+# ==================== ROTAS DE ADMIN ====================
+
+@experience_bp.route('/admin/experiences/bulk-upload', methods=['POST'])
+def admin_bulk_upload_experiences():
+    """Upload em lote de experiências via planilha (Excel/CSV)"""
+    try:
+        # Verificar se há arquivo no request
+        if 'file' not in request.files:
+            return jsonify({'error': 'Nenhum arquivo enviado'}), 400
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            return jsonify({'error': 'Nenhum arquivo selecionado'}), 400
+        
+        # Verificar extensão do arquivo
+        allowed_extensions = {'xlsx', 'xls', 'csv'}
+        file_extension = file.filename.rsplit('.', 1)[1].lower()
+        
+        if file_extension not in allowed_extensions:
+            return jsonify({'error': 'Formato de arquivo não suportado. Use Excel (.xlsx, .xls) ou CSV (.csv)'}), 400
+        
+        # Ler o arquivo
+        try:
+            if file_extension == 'csv':
+                df = pd.read_csv(file)
+            else:
+                df = pd.read_excel(file)
+        except Exception as e:
+            return jsonify({'error': f'Erro ao ler arquivo: {str(e)}'}), 400
+        
+        # Validar colunas obrigatórias
+        required_columns = ['name', 'description', 'address', 'latitude', 'longitude']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        
+        if missing_columns:
+            return jsonify({
+                'error': f'Colunas obrigatórias ausentes: {", ".join(missing_columns)}',
+                'required_columns': required_columns,
+                'available_columns': list(df.columns)
+            }), 400
+        
+        # Processar cada linha
+        created_experiences = []
+        errors = []
+        
+        for index, row in df.iterrows():
+            try:
+                # Validar dados obrigatórios
+                if pd.isna(row['name']) or pd.isna(row['description']) or pd.isna(row['address']):
+                    errors.append(f'Linha {index + 2}: Campos obrigatórios não podem estar vazios')
+                    continue
+                
+                # Validar coordenadas
+                try:
+                    latitude = float(row['latitude'])
+                    longitude = float(row['longitude'])
+                    
+                    if not (-90 <= latitude <= 90):
+                        errors.append(f'Linha {index + 2}: Latitude deve estar entre -90 e 90')
+                        continue
+                    
+                    if not (-180 <= longitude <= 180):
+                        errors.append(f'Linha {index + 2}: Longitude deve estar entre -180 e 180')
+                        continue
+                    
+                    point = WKTElement(f'POINT({longitude} {latitude})', srid=4326)
+                except (ValueError, TypeError):
+                    errors.append(f'Linha {index + 2}: Latitude e longitude devem ser números válidos')
+                    continue
+                
+                # Validar categoria se fornecida
+                category_id = None
+                if 'category_id' in df.columns and not pd.isna(row['category_id']):
+                    category = ExperienceCategory.query.get(row['category_id'])
+                    if not category:
+                        errors.append(f'Linha {index + 2}: Categoria não encontrada')
+                        continue
+                    category_id = row['category_id']
+                
+                # Criar experiência
+                experience = Experience(
+                    name=str(row['name']).strip(),
+                    description=str(row['description']).strip(),
+                    category_id=category_id,
+                    address=str(row['address']).strip(),
+                    location=point,
+                    phone=str(row['phone']).strip() if 'phone' in df.columns and not pd.isna(row['phone']) else None,
+                    website_url=str(row['website_url']).strip() if 'website_url' in df.columns and not pd.isna(row['website_url']) else None,
+                    instagram_handle=str(row['instagram_handle']).strip() if 'instagram_handle' in df.columns and not pd.isna(row['instagram_handle']) else None,
+                    opening_hours=row['opening_hours'] if 'opening_hours' in df.columns and not pd.isna(row['opening_hours']) else {},
+                    price_range=int(row['price_range']) if 'price_range' in df.columns and not pd.isna(row['price_range']) else None,
+                    is_hidden_gem=bool(row['is_hidden_gem']) if 'is_hidden_gem' in df.columns and not pd.isna(row['is_hidden_gem']) else False,
+                    created_by=request.args.get('created_by')  # ID do admin que fez o upload
+                )
+                
+                db.session.add(experience)
+                created_experiences.append(experience)
+                
+            except Exception as e:
+                errors.append(f'Linha {index + 2}: {str(e)}')
+                continue
+        
+        # Commit das experiências válidas
+        if created_experiences:
+            db.session.commit()
+        
+        return jsonify({
+            'message': f'Upload concluído. {len(created_experiences)} experiências criadas.',
+            'created_count': len(created_experiences),
+            'errors': errors,
+            'created_experiences': [exp.to_dict() for exp in created_experiences]
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Erro interno do servidor: {str(e)}'}), 500
+
+@experience_bp.route('/admin/experiences/template', methods=['GET'])
+def admin_get_upload_template():
+    """Retorna template para upload de experiências"""
+    try:
+        # Criar template de exemplo
+        template_data = {
+            'columns': [
+                'name',
+                'description', 
+                'address',
+                'latitude',
+                'longitude',
+                'category_id',
+                'phone',
+                'website_url',
+                'instagram_handle',
+                'price_range',
+                'is_hidden_gem'
+            ],
+            'required_columns': ['name', 'description', 'address', 'latitude', 'longitude'],
+            'example_data': [
+                {
+                    'name': 'Restaurante Exemplo',
+                    'description': 'Melhor restaurante da cidade',
+                    'address': 'Rua das Flores, 123',
+                    'latitude': -23.5505,
+                    'longitude': -46.6333,
+                    'category_id': 1,
+                    'phone': '(11) 99999-9999',
+                    'website_url': 'https://exemplo.com',
+                    'instagram_handle': '@exemplo',
+                    'price_range': 2,
+                    'is_hidden_gem': True
+                }
+            ],
+            'price_range_options': {
+                1: 'Barato (até R$ 30)',
+                2: 'Moderado (R$ 30 - R$ 80)',
+                3: 'Caro (R$ 80 - R$ 150)',
+                4: 'Muito caro (acima de R$ 150)'
+            },
+            'instructions': [
+                '1. Use Excel (.xlsx, .xls) ou CSV (.csv)',
+                '2. Campos obrigatórios: name, description, address, latitude, longitude',
+                '3. Latitude: -90 a 90, Longitude: -180 a 180',
+                '4. category_id: ID da categoria (opcional)',
+                '5. price_range: 1-4 (opcional)',
+                '6. is_hidden_gem: true/false (opcional)'
+            ]
+        }
+        
+        return jsonify(template_data), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Erro interno do servidor'}), 500
+
+@experience_bp.route('/admin/experiences/<experience_id>', methods=['PUT'])
+def admin_update_experience(experience_id):
+    """Atualiza uma experiência (rota de admin com mais permissões)"""
+    try:
+        experience = Experience.query.get(experience_id)
+        
+        if not experience:
+            return jsonify({'error': 'Experiência não encontrada'}), 404
+        
+        data = request.get_json()
+        
+        # Campos que podem ser atualizados por admin (incluindo campos sensíveis)
+        updatable_fields = [
+            'name', 'description', 'category_id', 'address', 
+            'latitude', 'longitude', 'phone', 'website_url', 
+            'instagram_handle', 'opening_hours', 'price_range', 
+            'is_hidden_gem', 'is_verified', 'is_active'
+        ]
+        
+        for field in updatable_fields:
+            if field in data:
+                if field in ['latitude', 'longitude']:
+                    # Validar coordenadas
+                    try:
+                        value = float(data[field])
+                        if field == 'latitude' and not (-90 <= value <= 90):
+                            return jsonify({'error': 'Latitude deve estar entre -90 e 90'}), 400
+                        if field == 'longitude' and not (-180 <= value <= 180):
+                            return jsonify({'error': 'Longitude deve estar entre -180 e 180'}), 400
+                        setattr(experience, field, value)
+                    except (ValueError, TypeError):
+                        return jsonify({'error': f'{field} deve ser um número válido'}), 400
+                elif field == 'category_id' and data[field]:
+                    # Validar categoria
+                    category = ExperienceCategory.query.get(data[field])
+                    if not category:
+                        return jsonify({'error': 'Categoria não encontrada'}), 404
+                    setattr(experience, field, data[field])
+                else:
+                    setattr(experience, field, data[field])
+        
+        experience.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Experiência atualizada com sucesso',
+            'experience': experience.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Erro interno do servidor'}), 500
+
+@experience_bp.route('/admin/experiences/<experience_id>', methods=['DELETE'])
+def admin_delete_experience(experience_id):
+    """Deleta uma experiência (rota de admin)"""
     try:
         experience = Experience.query.get(experience_id)
         

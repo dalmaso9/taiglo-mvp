@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu'
-import { MapPin, Home, Map, User, LogOut, Menu, X } from 'lucide-react'
+import { MapPin, Home, Map, User, LogOut, Menu, X, Settings } from 'lucide-react'
 
 export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -22,6 +22,9 @@ export default function Navigation() {
   ]
 
   const isActive = (path) => location.pathname === path
+
+  // Verificar se o usuário tem role de admin
+  const hasAdminRole = user?.roles?.some(role => role.name === 'admin') || false
 
   return (
     <nav className="bg-white shadow-sm border-b fixed top-0 left-0 right-0 z-50">
@@ -77,6 +80,9 @@ export default function Navigation() {
                   <div className="px-2 py-1.5">
                     <p className="text-sm font-medium">{user?.first_name} {user?.last_name}</p>
                     <p className="text-xs text-gray-500">{user?.email}</p>
+                    {hasAdminRole && (
+                      <p className="text-xs text-blue-600 font-medium">Administrador</p>
+                    )}
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
@@ -85,6 +91,17 @@ export default function Navigation() {
                       Perfil
                     </Link>
                   </DropdownMenuItem>
+                  {hasAdminRole && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin" className="flex items-center">
+                          <Settings className="mr-2 h-4 w-4" />
+                          Painel Admin
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout} className="text-red-600">
                     <LogOut className="mr-2 h-4 w-4" />
@@ -141,6 +158,9 @@ export default function Navigation() {
                   {user?.first_name} {user?.last_name}
                 </p>
                 <p className="text-xs text-gray-500">{user?.email}</p>
+                {hasAdminRole && (
+                  <p className="text-xs text-blue-600 font-medium">Administrador</p>
+                )}
               </div>
               
               <Link
@@ -151,6 +171,17 @@ export default function Navigation() {
                 <User className="h-5 w-5" />
                 <span>Perfil</span>
               </Link>
+              
+              {hasAdminRole && (
+                <Link
+                  to="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                >
+                  <Settings className="h-5 w-5" />
+                  <span>Painel Admin</span>
+                </Link>
+              )}
               
               <button
                 onClick={() => {
