@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from flasgger import swag_from
 import requests
 import os
 
@@ -56,117 +57,558 @@ def proxy_request(service_url, path, method='GET', timeout=30):
 
 # Rotas do User Service
 @gateway_bp.route('/auth/register', methods=['POST'])
+@swag_from({
+    'tags': ['Authentication'],
+    'summary': 'Registrar novo usuário',
+    'parameters': [
+        {
+            'name': 'body',
+            'in': 'body',
+            'required': True,
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'username': {'type': 'string'},
+                    'email': {'type': 'string'},
+                    'password': {'type': 'string'}
+                }
+            }
+        }
+    ],
+    'responses': {
+        201: {'description': 'Usuário criado com sucesso'},
+        400: {'description': 'Dados inválidos'},
+        409: {'description': 'Usuário já existe'}
+    }
+})
 def auth_register():
     return proxy_request(SERVICES['user'], '/api/auth/register', 'POST')
 
 @gateway_bp.route('/auth/login', methods=['POST'])
+@swag_from({
+    'tags': ['Authentication'],
+    'summary': 'Fazer login',
+    'parameters': [
+        {
+            'name': 'body',
+            'in': 'body',
+            'required': True,
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'email': {'type': 'string'},
+                    'password': {'type': 'string'}
+                }
+            }
+        }
+    ],
+    'responses': {
+        200: {'description': 'Login realizado com sucesso'},
+        401: {'description': 'Credenciais inválidas'}
+    }
+})
 def auth_login():
     return proxy_request(SERVICES['user'], '/api/auth/login', 'POST')
 
 @gateway_bp.route('/auth/me', methods=['GET'])
+@swag_from({
+    'tags': ['Authentication'],
+    'summary': 'Obter dados do usuário logado',
+    'security': [{'Bearer': []}],
+    'responses': {
+        200: {'description': 'Dados do usuário'},
+        401: {'description': 'Token inválido'}
+    }
+})
 def auth_me():
     return proxy_request(SERVICES['user'], '/api/auth/me', 'GET')
 
 @gateway_bp.route('/auth/refresh', methods=['POST'])
+@swag_from({
+    'tags': ['Authentication'],
+    'summary': 'Renovar token de acesso',
+    'responses': {
+        200: {'description': 'Token renovado'},
+        401: {'description': 'Token inválido'}
+    }
+})
 def auth_refresh():
     return proxy_request(SERVICES['user'], '/api/auth/refresh', 'POST')
 
 @gateway_bp.route('/users', methods=['GET'])
+@swag_from({
+    'tags': ['Users'],
+    'summary': 'Listar usuários',
+    'parameters': [
+        {'name': 'page', 'in': 'query', 'type': 'integer', 'description': 'Número da página'},
+        {'name': 'per_page', 'in': 'query', 'type': 'integer', 'description': 'Itens por página'}
+    ],
+    'responses': {
+        200: {'description': 'Lista de usuários'}
+    }
+})
 def get_users():
     return proxy_request(SERVICES['user'], '/api/users', 'GET')
 
 @gateway_bp.route('/users/<user_id>', methods=['GET'])
+@swag_from({
+    'tags': ['Users'],
+    'summary': 'Obter usuário por ID',
+    'parameters': [
+        {'name': 'user_id', 'in': 'path', 'type': 'integer', 'required': True}
+    ],
+    'responses': {
+        200: {'description': 'Dados do usuário'},
+        404: {'description': 'Usuário não encontrado'}
+    }
+})
 def get_user(user_id):
     return proxy_request(SERVICES['user'], f'/api/users/{user_id}', 'GET')
 
 @gateway_bp.route('/users/profile', methods=['PUT'])
+@swag_from({
+    'tags': ['Users'],
+    'summary': 'Atualizar perfil do usuário',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {
+            'name': 'body',
+            'in': 'body',
+            'required': True,
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'username': {'type': 'string'},
+                    'email': {'type': 'string'},
+                    'bio': {'type': 'string'}
+                }
+            }
+        }
+    ],
+    'responses': {
+        200: {'description': 'Perfil atualizado'},
+        401: {'description': 'Token inválido'},
+        400: {'description': 'Dados inválidos'}
+    }
+})
 def update_profile():
     return proxy_request(SERVICES['user'], '/api/users/profile', 'PUT')
 
 @gateway_bp.route('/users/profile', methods=['DELETE'])
+@swag_from({
+    'tags': ['Users'],
+    'summary': 'Deletar perfil do usuário',
+    'security': [{'Bearer': []}],
+    'responses': {
+        200: {'description': 'Perfil deletado'},
+        401: {'description': 'Token inválido'}
+    }
+})
 def delete_profile():
     return proxy_request(SERVICES['user'], '/api/users/profile', 'DELETE')
 
 @gateway_bp.route('/users/search', methods=['GET'])
+@swag_from({
+    'tags': ['Users'],
+    'summary': 'Buscar usuários',
+    'parameters': [
+        {'name': 'q', 'in': 'query', 'type': 'string', 'required': True, 'description': 'Termo de busca'}
+    ],
+    'responses': {
+        200: {'description': 'Resultados da busca'}
+    }
+})
 def search_users():
     return proxy_request(SERVICES['user'], '/api/users/search', 'GET')
 
 # Rotas do Experience Service
 @gateway_bp.route('/experiences', methods=['GET'])
+@swag_from({
+    'tags': ['Experiences'],
+    'summary': 'Listar experiências',
+    'parameters': [
+        {'name': 'page', 'in': 'query', 'type': 'integer', 'description': 'Número da página'},
+        {'name': 'per_page', 'in': 'query', 'type': 'integer', 'description': 'Itens por página'},
+        {'name': 'category', 'in': 'query', 'type': 'string', 'description': 'Filtrar por categoria'},
+        {'name': 'search', 'in': 'query', 'type': 'string', 'description': 'Termo de busca'}
+    ],
+    'responses': {
+        200: {'description': 'Lista de experiências'}
+    }
+})
 def get_experiences():
     return proxy_request(SERVICES['experience'], '/api/experiences', 'GET')
 
 @gateway_bp.route('/experiences/<experience_id>', methods=['GET'])
+@swag_from({
+    'tags': ['Experiences'],
+    'summary': 'Obter experiência por ID',
+    'parameters': [
+        {'name': 'experience_id', 'in': 'path', 'type': 'integer', 'required': True}
+    ],
+    'responses': {
+        200: {'description': 'Dados da experiência'},
+        404: {'description': 'Experiência não encontrada'}
+    }
+})
 def get_experience(experience_id):
     return proxy_request(SERVICES['experience'], f'/api/experiences/{experience_id}', 'GET')
 
 @gateway_bp.route('/experiences/nearby', methods=['GET'])
+@swag_from({
+    'tags': ['Experiences'],
+    'summary': 'Buscar experiências próximas',
+    'parameters': [
+        {'name': 'lat', 'in': 'query', 'type': 'number', 'required': True, 'description': 'Latitude'},
+        {'name': 'lng', 'in': 'query', 'type': 'number', 'required': True, 'description': 'Longitude'},
+        {'name': 'radius', 'in': 'query', 'type': 'number', 'description': 'Raio em km (padrão: 10)'}
+    ],
+    'responses': {
+        200: {'description': 'Experiências próximas'}
+    }
+})
 def get_nearby_experiences():
     return proxy_request(SERVICES['experience'], '/api/experiences/nearby', 'GET')
 
 @gateway_bp.route('/experiences', methods=['POST'])
+@swag_from({
+    'tags': ['Experiences'],
+    'summary': 'Criar nova experiência',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {
+            'name': 'body',
+            'in': 'body',
+            'required': True,
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'title': {'type': 'string'},
+                    'description': {'type': 'string'},
+                    'category_id': {'type': 'integer'},
+                    'latitude': {'type': 'number'},
+                    'longitude': {'type': 'number'},
+                    'address': {'type': 'string'}
+                }
+            }
+        }
+    ],
+    'responses': {
+        201: {'description': 'Experiência criada'},
+        400: {'description': 'Dados inválidos'},
+        401: {'description': 'Token inválido'}
+    }
+})
 def create_experience():
     return proxy_request(SERVICES['experience'], '/api/experiences', 'POST')
 
 @gateway_bp.route('/experiences/<experience_id>', methods=['PUT'])
+@swag_from({
+    'tags': ['Experiences'],
+    'summary': 'Atualizar experiência',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {'name': 'experience_id', 'in': 'path', 'type': 'integer', 'required': True},
+        {
+            'name': 'body',
+            'in': 'body',
+            'required': True,
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'title': {'type': 'string'},
+                    'description': {'type': 'string'},
+                    'category_id': {'type': 'integer'},
+                    'latitude': {'type': 'number'},
+                    'longitude': {'type': 'number'},
+                    'address': {'type': 'string'}
+                }
+            }
+        }
+    ],
+    'responses': {
+        200: {'description': 'Experiência atualizada'},
+        400: {'description': 'Dados inválidos'},
+        401: {'description': 'Token inválido'},
+        404: {'description': 'Experiência não encontrada'}
+    }
+})
 def update_experience(experience_id):
     return proxy_request(SERVICES['experience'], f'/api/experiences/{experience_id}', 'PUT')
 
 @gateway_bp.route('/experiences/<experience_id>', methods=['DELETE'])
+@swag_from({
+    'tags': ['Experiences'],
+    'summary': 'Deletar experiência',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {'name': 'experience_id', 'in': 'path', 'type': 'integer', 'required': True}
+    ],
+    'responses': {
+        200: {'description': 'Experiência deletada'},
+        401: {'description': 'Token inválido'},
+        404: {'description': 'Experiência não encontrada'}
+    }
+})
 def delete_experience(experience_id):
     return proxy_request(SERVICES['experience'], f'/api/experiences/{experience_id}', 'DELETE')
 
 @gateway_bp.route('/categories', methods=['GET'])
+@swag_from({
+    'tags': ['Categories'],
+    'summary': 'Listar categorias',
+    'responses': {
+        200: {'description': 'Lista de categorias'}
+    }
+})
 def get_categories():
     return proxy_request(SERVICES['experience'], '/api/categories', 'GET')
 
 @gateway_bp.route('/categories/<category_id>', methods=['GET'])
+@swag_from({
+    'tags': ['Categories'],
+    'summary': 'Obter categoria por ID',
+    'parameters': [
+        {'name': 'category_id', 'in': 'path', 'type': 'integer', 'required': True}
+    ],
+    'responses': {
+        200: {'description': 'Dados da categoria'},
+        404: {'description': 'Categoria não encontrada'}
+    }
+})
 def get_category(category_id):
     return proxy_request(SERVICES['experience'], f'/api/categories/{category_id}', 'GET')
 
 @gateway_bp.route('/categories', methods=['POST'])
+@swag_from({
+    'tags': ['Categories'],
+    'summary': 'Criar nova categoria',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {
+            'name': 'body',
+            'in': 'body',
+            'required': True,
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'name': {'type': 'string'},
+                    'description': {'type': 'string'}
+                }
+            }
+        }
+    ],
+    'responses': {
+        201: {'description': 'Categoria criada'},
+        400: {'description': 'Dados inválidos'},
+        401: {'description': 'Token inválido'}
+    }
+})
 def create_category():
     return proxy_request(SERVICES['experience'], '/api/categories', 'POST')
 
 @gateway_bp.route('/categories/<category_id>', methods=['PUT'])
+@swag_from({
+    'tags': ['Categories'],
+    'summary': 'Atualizar categoria',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {'name': 'category_id', 'in': 'path', 'type': 'integer', 'required': True},
+        {
+            'name': 'body',
+            'in': 'body',
+            'required': True,
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'name': {'type': 'string'},
+                    'description': {'type': 'string'}
+                }
+            }
+        }
+    ],
+    'responses': {
+        200: {'description': 'Categoria atualizada'},
+        400: {'description': 'Dados inválidos'},
+        401: {'description': 'Token inválido'},
+        404: {'description': 'Categoria não encontrada'}
+    }
+})
 def update_category(category_id):
     return proxy_request(SERVICES['experience'], f'/api/categories/{category_id}', 'PUT')
 
 @gateway_bp.route('/categories/<category_id>', methods=['DELETE'])
+@swag_from({
+    'tags': ['Categories'],
+    'summary': 'Deletar categoria',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {'name': 'category_id', 'in': 'path', 'type': 'integer', 'required': True}
+    ],
+    'responses': {
+        200: {'description': 'Categoria deletada'},
+        401: {'description': 'Token inválido'},
+        404: {'description': 'Categoria não encontrada'}
+    }
+})
 def delete_category(category_id):
     return proxy_request(SERVICES['experience'], f'/api/categories/{category_id}', 'DELETE')
 
 # Rotas do Review Service
 @gateway_bp.route('/reviews', methods=['GET'])
+@swag_from({
+    'tags': ['Reviews'],
+    'summary': 'Listar reviews',
+    'parameters': [
+        {'name': 'page', 'in': 'query', 'type': 'integer', 'description': 'Número da página'},
+        {'name': 'per_page', 'in': 'query', 'type': 'integer', 'description': 'Itens por página'},
+        {'name': 'experience_id', 'in': 'query', 'type': 'integer', 'description': 'Filtrar por experiência'},
+        {'name': 'user_id', 'in': 'query', 'type': 'integer', 'description': 'Filtrar por usuário'}
+    ],
+    'responses': {
+        200: {'description': 'Lista de reviews'}
+    }
+})
 def get_reviews():
     return proxy_request(SERVICES['review'], '/api/reviews', 'GET')
 
 @gateway_bp.route('/reviews/<review_id>', methods=['GET'])
+@swag_from({
+    'tags': ['Reviews'],
+    'summary': 'Obter review por ID',
+    'parameters': [
+        {'name': 'review_id', 'in': 'path', 'type': 'integer', 'required': True}
+    ],
+    'responses': {
+        200: {'description': 'Dados do review'},
+        404: {'description': 'Review não encontrado'}
+    }
+})
 def get_review(review_id):
     return proxy_request(SERVICES['review'], f'/api/reviews/{review_id}', 'GET')
 
 @gateway_bp.route('/reviews', methods=['POST'])
+@swag_from({
+    'tags': ['Reviews'],
+    'summary': 'Criar novo review',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {
+            'name': 'body',
+            'in': 'body',
+            'required': True,
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'experience_id': {'type': 'integer'},
+                    'rating': {'type': 'integer', 'minimum': 1, 'maximum': 5},
+                    'comment': {'type': 'string'}
+                }
+            }
+        }
+    ],
+    'responses': {
+        201: {'description': 'Review criado'},
+        400: {'description': 'Dados inválidos'},
+        401: {'description': 'Token inválido'}
+    }
+})
 def create_review():
     return proxy_request(SERVICES['review'], '/api/reviews', 'POST')
 
 @gateway_bp.route('/reviews/<review_id>', methods=['PUT'])
+@swag_from({
+    'tags': ['Reviews'],
+    'summary': 'Atualizar review',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {'name': 'review_id', 'in': 'path', 'type': 'integer', 'required': True},
+        {
+            'name': 'body',
+            'in': 'body',
+            'required': True,
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'rating': {'type': 'integer', 'minimum': 1, 'maximum': 5},
+                    'comment': {'type': 'string'}
+                }
+            }
+        }
+    ],
+    'responses': {
+        200: {'description': 'Review atualizado'},
+        400: {'description': 'Dados inválidos'},
+        401: {'description': 'Token inválido'},
+        404: {'description': 'Review não encontrado'}
+    }
+})
 def update_review(review_id):
     return proxy_request(SERVICES['review'], f'/api/reviews/{review_id}', 'PUT')
 
 @gateway_bp.route('/reviews/<review_id>', methods=['DELETE'])
+@swag_from({
+    'tags': ['Reviews'],
+    'summary': 'Deletar review',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {'name': 'review_id', 'in': 'path', 'type': 'integer', 'required': True}
+    ],
+    'responses': {
+        200: {'description': 'Review deletado'},
+        401: {'description': 'Token inválido'},
+        404: {'description': 'Review não encontrado'}
+    }
+})
 def delete_review(review_id):
     return proxy_request(SERVICES['review'], f'/api/reviews/{review_id}', 'DELETE')
 
 @gateway_bp.route('/reviews/<review_id>/helpful', methods=['POST'])
+@swag_from({
+    'tags': ['Reviews'],
+    'summary': 'Votar review como útil',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {'name': 'review_id', 'in': 'path', 'type': 'integer', 'required': True}
+    ],
+    'responses': {
+        200: {'description': 'Voto registrado'},
+        401: {'description': 'Token inválido'},
+        404: {'description': 'Review não encontrado'}
+    }
+})
 def vote_helpful(review_id):
     return proxy_request(SERVICES['review'], f'/api/reviews/{review_id}/helpful', 'POST')
 
 @gateway_bp.route('/experiences/<experience_id>/reviews/stats', methods=['GET'])
+@swag_from({
+    'tags': ['Reviews'],
+    'summary': 'Obter estatísticas de reviews de uma experiência',
+    'parameters': [
+        {'name': 'experience_id', 'in': 'path', 'type': 'integer', 'required': True}
+    ],
+    'responses': {
+        200: {'description': 'Estatísticas dos reviews'},
+        404: {'description': 'Experiência não encontrada'}
+    }
+})
 def get_experience_review_stats(experience_id):
     return proxy_request(SERVICES['review'], f'/api/experiences/{experience_id}/reviews/stats', 'GET')
 
 # Rotas combinadas (que fazem chamadas para múltiplos serviços)
 @gateway_bp.route('/experiences/<experience_id>/full', methods=['GET'])
+@swag_from({
+    'tags': ['Experiences'],
+    'summary': 'Obter experiência completa com reviews e estatísticas',
+    'parameters': [
+        {'name': 'experience_id', 'in': 'path', 'type': 'integer', 'required': True}
+    ],
+    'responses': {
+        200: {'description': 'Experiência completa'},
+        404: {'description': 'Experiência não encontrada'},
+        500: {'description': 'Erro interno'}
+    }
+})
 def get_experience_full(experience_id):
     """Retorna experiência com reviews e estatísticas"""
     try:
@@ -209,6 +651,18 @@ def get_experience_full(experience_id):
         return jsonify({'error': 'Erro ao buscar dados completos da experiência'}), 500
 
 @gateway_bp.route('/search', methods=['GET'])
+@swag_from({
+    'tags': ['Search'],
+    'summary': 'Busca unificada em experiências e reviews',
+    'parameters': [
+        {'name': 'q', 'in': 'query', 'type': 'string', 'required': True, 'description': 'Termo de busca'}
+    ],
+    'responses': {
+        200: {'description': 'Resultados da busca'},
+        400: {'description': 'Parâmetro de busca obrigatório'},
+        500: {'description': 'Erro interno'}
+    }
+})
 def unified_search():
     """Busca unificada em experiências e reviews"""
     try:

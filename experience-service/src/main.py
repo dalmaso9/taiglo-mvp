@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from flask import Flask, send_from_directory
 from flask_cors import CORS
+from flasgger import Swagger, swag_from
 from src.models.experience import db
 from src.routes.experience import experience_bp
 from src.routes.category import category_bp
@@ -14,6 +15,42 @@ app.config['SECRET_KEY'] = 'taiglo-experience-secret-key-2024'
 
 # Configurar CORS
 CORS(app, origins="*")
+
+# Configurar Swagger
+swagger_config = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": 'apispec_1',
+            "route": '/apispec_1.json',
+            "rule_filter": lambda rule: True,
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/apidocs/"
+}
+
+swagger_template = {
+    "swagger": "2.0",
+    "info": {
+        "title": "Taiglo Experience Service",
+        "description": "API para gerenciamento de experiências do sistema Taiglo",
+        "version": "1.0.0",
+        "contact": {
+            "name": "Taiglo Team",
+            "email": "support@taiglo.com"
+        }
+    },
+    "host": "localhost:3002",
+    "basePath": "/api",
+    "schemes": ["http", "https"],
+    "consumes": ["application/json"],
+    "produces": ["application/json"]
+}
+
+swagger = Swagger(app, config=swagger_config, template=swagger_template)
 
 # Registrar blueprints
 app.register_blueprint(experience_bp, url_prefix='/api')
@@ -43,6 +80,20 @@ def serve(path):
             return "index.html not found", 404
 
 @app.route('/health')
+@swag_from({
+    'responses': {
+        200: {
+            'description': 'Serviço saudável',
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'status': {'type': 'string'},
+                    'service': {'type': 'string'}
+                }
+            }
+        }
+    }
+})
 def health_check():
     return {'status': 'healthy', 'service': 'experience-service'}, 200
 

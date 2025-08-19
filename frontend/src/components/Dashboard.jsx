@@ -222,7 +222,7 @@ export default function Dashboard() {
 
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      {/*<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card className="hover:shadow-md transition-shadow cursor-pointer">
           <Link to="/map">
             <CardContent className="pt-6">
@@ -268,7 +268,7 @@ export default function Dashboard() {
             </CardContent>
           </Link>
         </Card>
-      </div>
+      </div>*/}
 
       {/* Experiences Grid */}
       <div className="mb-6">
