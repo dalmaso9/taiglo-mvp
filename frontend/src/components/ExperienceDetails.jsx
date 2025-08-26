@@ -214,6 +214,24 @@ export default function ExperienceDetails() {
             {experience.description}
           </p>
 
+          {/* Photos Section */}
+          {experience.photos && experience.photos.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Fotos</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {experience.photos.map((photo, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={photo}
+                      alt={`Foto ${index + 1} de ${experience.name}`}
+                      className="w-full h-48 object-cover rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Contact Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="space-y-3">

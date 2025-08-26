@@ -15,6 +15,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar código da aplicação
 COPY . .
 
+# Criar diretório de uploads e definir permissões
+RUN mkdir -p /app/src/static/uploads && chmod 755 /app/src/static/uploads
+
 # Expor a porta
 EXPOSE 3002
 

@@ -90,6 +90,7 @@ services:
       - taiglo_network
     volumes:
       - ./experience-service/src:/app/src
+      - experience_uploads:/app/src/static/uploads
     healthcheck:
       test: ["CMD", "curl", "-f", "http://experience-service:3002/health"]
       interval: 30s
@@ -182,4 +183,5 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  experience_uploads:
 

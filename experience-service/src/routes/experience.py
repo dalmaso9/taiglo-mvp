@@ -6,6 +6,9 @@ from geoalchemy2.elements import WKTElement
 import pandas as pd
 import io
 import os
+from werkzeug.utils import secure_filename
+from PIL import Image
+import base64
 
 experience_bp = Blueprint('experience', __name__)
 
@@ -318,13 +321,18 @@ def delete_experience(experience_id):
 def admin_bulk_upload_experiences():
     """Upload em lote de experiências via planilha (Excel/CSV)"""
     try:
+        current_app.logger.info("Iniciando bulk upload de experiências")
+        
         # Verificar se há arquivo no request
         if 'file' not in request.files:
+            current_app.logger.error("Nenhum arquivo enviado")
             return jsonify({'error': 'Nenhum arquivo enviado'}), 400
         
         file = request.files['file']
+        current_app.logger.info(f"Arquivo recebido: {file.filename}")
         
         if file.filename == '':
+            current_app.logger.error("Nenhum arquivo selecionado")
             return jsonify({'error': 'Nenhum arquivo selecionado'}), 400
         
         # Verificar extensão do arquivo
@@ -336,11 +344,14 @@ def admin_bulk_upload_experiences():
         
         # Ler o arquivo
         try:
+            current_app.logger.info(f"Lendo arquivo {file_extension}")
             if file_extension == 'csv':
                 df = pd.read_csv(file)
             else:
                 df = pd.read_excel(file)
+            current_app.logger.info(f"Arquivo lido com {len(df)} linhas")
         except Exception as e:
+            current_app.logger.error(f"Erro ao ler arquivo: {str(e)}")
             return jsonify({'error': f'Erro ao ler arquivo: {str(e)}'}), 400
         
         # Validar colunas obrigatórias
@@ -348,11 +359,14 @@ def admin_bulk_upload_experiences():
         missing_columns = [col for col in required_columns if col not in df.columns]
         
         if missing_columns:
+            current_app.logger.error(f"Colunas ausentes: {missing_columns}")
             return jsonify({
                 'error': f'Colunas obrigatórias ausentes: {", ".join(missing_columns)}',
                 'required_columns': required_columns,
                 'available_columns': list(df.columns)
             }), 400
+        
+        current_app.logger.info("Iniciando processamento das linhas")
         
         # Processar cada linha
         created_experiences = []
@@ -417,7 +431,11 @@ def admin_bulk_upload_experiences():
         
         # Commit das experiências válidas
         if created_experiences:
+            current_app.logger.info(f"Fazendo commit de {len(created_experiences)} experiências")
             db.session.commit()
+            current_app.logger.info("Commit realizado com sucesso")
+        
+        current_app.logger.info(f"Bulk upload concluído: {len(created_experiences)} criadas, {len(errors)} erros")
         
         return jsonify({
             'message': f'Upload concluído. {len(created_experiences)} experiências criadas.',
@@ -427,6 +445,7 @@ def admin_bulk_upload_experiences():
         }), 201
         
     except Exception as e:
+        current_app.logger.error(f"Erro no bulk upload: {str(e)}")
         db.session.rollback()
         return jsonify({'error': f'Erro interno do servidor: {str(e)}'}), 500
 
@@ -557,5 +576,166 @@ def admin_delete_experience(experience_id):
         
     except Exception as e:
         db.session.rollback()
+        return jsonify({'error': 'Erro interno do servidor'}), 500
+
+# Configurações para upload de imagens
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def save_image(file, experience_id):
+    """Salva uma imagem e retorna a URL"""
+    try:
+        # Criar diretório se não existir
+        upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', str(experience_id))
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        # Gerar nome único para o arquivo
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(upload_folder, unique_filename)
+        
+        # Salvar arquivo
+        file.save(filepath)
+        
+        # Retornar URL relativa
+        return f"/static/uploads/{experience_id}/{unique_filename}"
+        
+    except Exception as e:
+        current_app.logger.error(f"Erro ao salvar imagem: {str(e)}")
+        return None
+
+@experience_bp.route('/experiences/<experience_id>/photos', methods=['POST'])
+def upload_photos(experience_id):
+    """Upload de fotos para uma experiência"""
+    try:
+        experience = Experience.query.get(experience_id)
+        if not experience:
+            return jsonify({'error': 'Experiência não encontrada'}), 404
+        
+        # Verificar se há arquivos
+        if 'photos' not in request.files:
+            return jsonify({'error': 'Nenhum arquivo enviado'}), 400
+        
+        files = request.files.getlist('photos')
+        if not files or files[0].filename == '':
+            return jsonify({'error': 'Nenhum arquivo selecionado'}), 400
+        
+        uploaded_urls = []
+        
+        for file in files:
+            if file and allowed_file(file.filename):
+                # Verificar tamanho do arquivo
+                file.seek(0, 2)  # Ir para o final do arquivo
+                file_size = file.tell()
+                file.seek(0)  # Voltar para o início
+                
+                if file_size > MAX_FILE_SIZE:
+                    return jsonify({'error': f'Arquivo {file.filename} é muito grande. Máximo 5MB.'}), 400
+                
+                # Salvar imagem
+                image_url = save_image(file, experience_id)
+                if image_url:
+                    uploaded_urls.append(image_url)
+                else:
+                    return jsonify({'error': f'Erro ao salvar {file.filename}'}), 500
+        
+        # Atualizar lista de fotos da experiência
+        current_photos = experience.photos or []
+        experience.photos = current_photos + uploaded_urls
+        experience.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'{len(uploaded_urls)} foto(s) enviada(s) com sucesso',
+            'photos': uploaded_urls,
+            'total_photos': len(experience.photos)
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erro no upload de fotos: {str(e)}")
+        return jsonify({'error': 'Erro interno do servidor'}), 500
+
+@experience_bp.route('/experiences/<experience_id>/photos', methods=['DELETE'])
+def delete_photos(experience_id):
+    """Remove fotos de uma experiência"""
+    try:
+        experience = Experience.query.get(experience_id)
+        if not experience:
+            return jsonify({'error': 'Experiência não encontrada'}), 404
+        
+        data = request.get_json()
+        photo_urls = data.get('photo_urls', [])
+        
+        if not photo_urls:
+            return jsonify({'error': 'Nenhuma foto especificada para remoção'}), 400
+        
+        current_photos = experience.photos or []
+        updated_photos = [photo for photo in current_photos if photo not in photo_urls]
+        
+        # Remover arquivos físicos
+        for photo_url in photo_urls:
+            try:
+                if photo_url.startswith('/static/uploads/'):
+                    file_path = os.path.join(current_app.root_path, photo_url.lstrip('/'))
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+            except Exception as e:
+                current_app.logger.warning(f"Erro ao remover arquivo {photo_url}: {str(e)}")
+        
+        experience.photos = updated_photos
+        experience.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'{len(photo_urls)} foto(s) removida(s) com sucesso',
+            'total_photos': len(updated_photos)
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erro ao remover fotos: {str(e)}")
+        return jsonify({'error': 'Erro interno do servidor'}), 500
+
+@experience_bp.route('/experiences/<experience_id>/photos/reorder', methods=['PUT'])
+def reorder_photos(experience_id):
+    """Reordena as fotos de uma experiência"""
+    try:
+        experience = Experience.query.get(experience_id)
+        if not experience:
+            return jsonify({'error': 'Experiência não encontrada'}), 404
+        
+        data = request.get_json()
+        new_order = data.get('photo_order', [])
+        
+        if not new_order:
+            return jsonify({'error': 'Nova ordem não especificada'}), 400
+        
+        current_photos = experience.photos or []
+        
+        # Verificar se todas as fotos na nova ordem existem
+        if not all(photo in current_photos for photo in new_order):
+            return jsonify({'error': 'Algumas fotos especificadas não existem'}), 400
+        
+        experience.photos = new_order
+        experience.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Fotos reordenadas com sucesso',
+            'photos': new_order
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erro ao reordenar fotos: {str(e)}")
         return jsonify({'error': 'Erro interno do servidor'}), 500
 

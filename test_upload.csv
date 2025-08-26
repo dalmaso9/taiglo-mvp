@@ -1,0 +1,3 @@
+name,description,address,latitude,longitude,category_id,phone,website_url,instagram_handle,price_range,is_hidden_gem
+Teste 1,Descrição do teste 1,Rua Teste 1, -23.5505,-46.6333,a3856580-bf1f-43f5-92d7-9c72e186e0cf,(11) 99999-9999,https://teste1.com,@teste1,2,false
+Teste 2,Descrição do teste 2,Rua Teste 2, -23.5506,-46.6334,713ede71-1fa5-40b6-9cbe-8791925bc6ea,(11) 99999-9998,https://teste2.com,@teste2,2,false

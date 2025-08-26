@@ -3,12 +3,13 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { useAuth } from '../hooks/useAuth';
+import ImageUpload from './ImageUpload';
 
 const API_BASE_URL = 'http://localhost:3000/api';
 
@@ -20,6 +21,8 @@ const AdminPanel = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [selectedExperienceId, setSelectedExperienceId] = useState(null);
+  const [selectedExperience, setSelectedExperience] = useState(null);
 
   // Estados para formulário de experiência
   const [experienceForm, setExperienceForm] = useState({
@@ -39,6 +42,21 @@ const AdminPanel = () => {
   // Estados para edição
   const [editingExperience, setEditingExperience] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+
+  // Carregar experiências ao montar o componente
+  useEffect(() => {
+    fetchExperiences();
+  }, []);
+
+  // Atualizar experiência selecionada quando o ID mudar
+  useEffect(() => {
+    if (selectedExperienceId) {
+      const experience = experiences.find(exp => exp.id === selectedExperienceId);
+      setSelectedExperience(experience);
+    } else {
+      setSelectedExperience(null);
+    }
+  }, [selectedExperienceId, experiences]);
 
   useEffect(() => {
     if (user && user.role === 'admin') {
@@ -293,10 +311,11 @@ const AdminPanel = () => {
       )}
 
       <Tabs defaultValue="list" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="list">Listar Experiências</TabsTrigger>
-          <TabsTrigger value="create">Criar Experiência</TabsTrigger>
-          <TabsTrigger value="upload">Upload em Lote</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="list">Listar</TabsTrigger>
+          <TabsTrigger value="create">Criar</TabsTrigger>
+          <TabsTrigger value="upload">Upload</TabsTrigger>
+          <TabsTrigger value="photos">Fotos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
@@ -564,6 +583,53 @@ const AdminPanel = () => {
                       style={{ width: `${uploadProgress}%` }}
                     ></div>
                   </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="photos" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Gerenciar Fotos</CardTitle>
+              <CardDescription>
+                Adicione e gerencie fotos das experiências
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="experience-select">Selecionar Experiência</Label>
+                  <Select onValueChange={(value) => setSelectedExperienceId(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Escolha uma experiência" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {experiences.map((exp) => (
+                        <SelectItem key={exp.id} value={exp.id}>
+                          {exp.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedExperienceId && (
+                  <ImageUpload
+                    experienceId={selectedExperienceId}
+                    photos={selectedExperience?.photos || []}
+                    onPhotosChange={(newPhotos) => {
+                      // Atualizar a experiência selecionada
+                      setSelectedExperience(prev => prev ? {...prev, photos: newPhotos} : null);
+                      // Atualizar a lista de experiências
+                      setExperiences(prev => prev.map(exp => 
+                        exp.id === selectedExperienceId 
+                          ? {...exp, photos: newPhotos}
+                          : exp
+                      ));
+                    }}
+                  />
                 )}
               </div>
             </CardContent>

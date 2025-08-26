@@ -58,6 +58,7 @@ class Experience(db.Model):
     is_hidden_gem = db.Column(db.Boolean, default=False)
     is_verified = db.Column(db.Boolean, default=False)
     authenticity_score = db.Column(db.Float, default=0.0)
+    photos = db.Column(db.JSON, default=[])  # Array de URLs das fotos
     created_by = db.Column(db.String(36))  # User ID
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -84,6 +85,7 @@ class Experience(db.Model):
             'is_hidden_gem': self.is_hidden_gem,
             'is_verified': self.is_verified,
             'authenticity_score': round(self.authenticity_score, 2) if self.authenticity_score else 0.0,
+            'photos': self.photos,
             'created_by': self.created_by,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()

@@ -51,6 +51,7 @@ CREATE TABLE experiences (
     is_hidden_gem BOOLEAN DEFAULT FALSE,
     is_verified BOOLEAN DEFAULT FALSE,
     authenticity_score DECIMAL(3,2) DEFAULT 0.00,
+    photos JSONB DEFAULT '[]', -- Array de URLs das fotos da experiência
     created_by UUID REFERENCES users(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

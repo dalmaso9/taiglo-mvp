@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import uuid
+from sqlalchemy import text
 import bcrypt
 
 db = SQLAlchemy()
@@ -46,7 +47,7 @@ class User(db.Model):
         try:
             # Usar função do banco de dados para verificar permissão
             result = db.session.execute(
-                'SELECT user_has_permission(:user_id, :permission)',
+                text('SELECT user_has_permission(:user_id, :permission)'),
                 {'user_id': self.id, 'permission': permission_name}
             ).scalar()
             return bool(result)
@@ -57,7 +58,7 @@ class User(db.Model):
         """Verifica se o usuário tem um role específico"""
         try:
             result = db.session.execute(
-                'SELECT COUNT(*) FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = :user_id AND r.name = :role_name AND r.is_active = TRUE',
+                text('SELECT COUNT(*) FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = :user_id AND r.name = :role_name AND r.is_active = TRUE'),
                 {'user_id': self.id, 'role_name': role_name}
             ).scalar()
             return result > 0
@@ -76,7 +77,7 @@ class User(db.Model):
         """Retorna todos os roles do usuário"""
         try:
             result = db.session.execute(
-                'SELECT role_name, role_description FROM get_user_roles(:user_id)',
+                text('SELECT role_name, role_description FROM get_user_roles(:user_id)'),
                 {'user_id': self.id}
             ).fetchall()
             return [{'name': row[0], 'description': row[1]} for row in result]
@@ -87,7 +88,7 @@ class User(db.Model):
         """Retorna todas as permissões do usuário"""
         try:
             result = db.session.execute(
-                'SELECT permission_name, resource, action FROM get_user_permissions(:user_id)',
+                text('SELECT permission_name, resource, action FROM get_user_permissions(:user_id)'),
                 {'user_id': self.id}
             ).fetchall()
             return [{'name': row[0], 'resource': row[1], 'action': row[2]} for row in result]
@@ -99,20 +100,20 @@ class User(db.Model):
         try:
             # Buscar o role
             role = db.session.execute(
-                'SELECT id FROM roles WHERE name = :role_name AND is_active = TRUE',
+                text('SELECT id FROM roles WHERE name = :role_name AND is_active = TRUE'),
                 {'role_name': role_name}
             ).scalar()
             
             if role:
                 # Verificar se já tem o role
                 existing = db.session.execute(
-                    'SELECT id FROM user_roles WHERE user_id = :user_id AND role_id = :role_id',
+                    text('SELECT id FROM user_roles WHERE user_id = :user_id AND role_id = :role_id'),
                     {'user_id': self.id, 'role_id': role}
                 ).scalar()
                 
                 if not existing:
                     db.session.execute(
-                        'INSERT INTO user_roles (user_id, role_id) VALUES (:user_id, :role_id)',
+                        text('INSERT INTO user_roles (user_id, role_id) VALUES (:user_id, :role_id)'),
                         {'user_id': self.id, 'role_id': role}
                     )
                     db.session.commit()
@@ -126,7 +127,7 @@ class User(db.Model):
         """Remove um role do usuário"""
         try:
             result = db.session.execute(
-                'DELETE FROM user_roles WHERE user_id = :user_id AND role_id = (SELECT id FROM roles WHERE name = :role_name)',
+                text('DELETE FROM user_roles WHERE user_id = :user_id AND role_id = (SELECT id FROM roles WHERE name = :role_name)'),
                 {'user_id': self.id, 'role_name': role_name}
             )
             db.session.commit()

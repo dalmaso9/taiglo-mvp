@@ -46,7 +46,8 @@ CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role_id);
 CREATE INDEX IF NOT EXISTS idx_permissions_resource_action ON permissions(resource, action);
 
--- Trigger para atualizar updated_at em roles
+-- Trigger para atualizar updated_at em roles (remover se existir e recriar)
+DROP TRIGGER IF EXISTS update_roles_updated_at ON roles;
 CREATE TRIGGER update_roles_updated_at BEFORE UPDATE ON roles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Inserir roles padrão

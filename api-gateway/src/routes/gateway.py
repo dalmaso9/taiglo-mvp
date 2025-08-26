@@ -20,12 +20,24 @@ def proxy_request(service_url, path, method='GET', timeout=30):
         # Preparar dados da requisição
         kwargs = {
             'timeout': timeout,
-            'headers': dict(request.headers),
             'params': request.args
         }
         
+        # Lidar com headers (remover alguns que podem causar problemas)
+        headers = dict(request.headers)
+        # Remover headers que podem causar problemas no proxy
+        headers_to_remove = ['Content-Length', 'Host', 'Content-Type']
+        for header in headers_to_remove:
+            headers.pop(header, None)
+        kwargs['headers'] = headers
+        
         # Adicionar dados do corpo se necessário
-        if request.is_json:
+        if request.files:
+            # Upload de arquivos
+            kwargs['files'] = request.files
+            if request.form:
+                kwargs['data'] = request.form
+        elif request.is_json:
             kwargs['json'] = request.get_json()
         elif request.data:
             kwargs['data'] = request.data
@@ -53,7 +65,7 @@ def proxy_request(service_url, path, method='GET', timeout=30):
     except requests.exceptions.ConnectionError:
         return jsonify({'error': 'Serviço indisponível'}), 503
     except Exception as e:
-        return jsonify({'error': 'Erro interno do gateway'}), 500
+        return jsonify({'error': f'Erro interno do gateway: {str(e)}'}), 500
 
 # Rotas do User Service
 @gateway_bp.route('/auth/register', methods=['POST'])
@@ -353,38 +365,33 @@ def update_experience(experience_id):
 def delete_experience(experience_id):
     return proxy_request(SERVICES['experience'], f'/api/experiences/{experience_id}', 'DELETE')
 
-@gateway_bp.route('/categories', methods=['GET'])
+# Rotas de Fotos para Experiências
+@gateway_bp.route('/experiences/<experience_id>/photos', methods=['POST'])
 @swag_from({
-    'tags': ['Categories'],
-    'summary': 'Listar categorias',
-    'responses': {
-        200: {'description': 'Lista de categorias'}
-    }
-})
-def get_categories():
-    return proxy_request(SERVICES['experience'], '/api/categories', 'GET')
-
-@gateway_bp.route('/categories/<category_id>', methods=['GET'])
-@swag_from({
-    'tags': ['Categories'],
-    'summary': 'Obter categoria por ID',
-    'parameters': [
-        {'name': 'category_id', 'in': 'path', 'type': 'integer', 'required': True}
-    ],
-    'responses': {
-        200: {'description': 'Dados da categoria'},
-        404: {'description': 'Categoria não encontrada'}
-    }
-})
-def get_category(category_id):
-    return proxy_request(SERVICES['experience'], f'/api/categories/{category_id}', 'GET')
-
-@gateway_bp.route('/categories', methods=['POST'])
-@swag_from({
-    'tags': ['Categories'],
-    'summary': 'Criar nova categoria',
+    'tags': ['Experiences'],
+    'summary': 'Upload de fotos para experiência',
     'security': [{'Bearer': []}],
     'parameters': [
+        {'name': 'experience_id', 'in': 'path', 'type': 'string', 'required': True},
+        {'name': 'photos', 'in': 'formData', 'type': 'file', 'required': True, 'multiple': True}
+    ],
+    'responses': {
+        200: {'description': 'Fotos enviadas com sucesso'},
+        400: {'description': 'Arquivo inválido'},
+        401: {'description': 'Token inválido'},
+        404: {'description': 'Experiência não encontrada'}
+    }
+})
+def upload_experience_photos(experience_id):
+    return proxy_request(SERVICES['experience'], f'/api/experiences/{experience_id}/photos', 'POST')
+
+@gateway_bp.route('/experiences/<experience_id>/photos', methods=['DELETE'])
+@swag_from({
+    'tags': ['Experiences'],
+    'summary': 'Remover fotos de experiência',
+    'security': [{'Bearer': []}],
+    'parameters': [
+        {'name': 'experience_id', 'in': 'path', 'type': 'string', 'required': True},
         {
             'name': 'body',
             'in': 'body',
@@ -392,28 +399,31 @@ def get_category(category_id):
             'schema': {
                 'type': 'object',
                 'properties': {
-                    'name': {'type': 'string'},
-                    'description': {'type': 'string'}
+                    'photo_urls': {
+                        'type': 'array',
+                        'items': {'type': 'string'}
+                    }
                 }
             }
         }
     ],
     'responses': {
-        201: {'description': 'Categoria criada'},
+        200: {'description': 'Fotos removidas com sucesso'},
         400: {'description': 'Dados inválidos'},
-        401: {'description': 'Token inválido'}
+        401: {'description': 'Token inválido'},
+        404: {'description': 'Experiência não encontrada'}
     }
 })
-def create_category():
-    return proxy_request(SERVICES['experience'], '/api/categories', 'POST')
+def delete_experience_photos(experience_id):
+    return proxy_request(SERVICES['experience'], f'/api/experiences/{experience_id}/photos', 'DELETE')
 
-@gateway_bp.route('/categories/<category_id>', methods=['PUT'])
+@gateway_bp.route('/experiences/<experience_id>/photos/reorder', methods=['PUT'])
 @swag_from({
-    'tags': ['Categories'],
-    'summary': 'Atualizar categoria',
+    'tags': ['Experiences'],
+    'summary': 'Reordenar fotos de experiência',
     'security': [{'Bearer': []}],
     'parameters': [
-        {'name': 'category_id', 'in': 'path', 'type': 'integer', 'required': True},
+        {'name': 'experience_id', 'in': 'path', 'type': 'string', 'required': True},
         {
             'name': 'body',
             'in': 'body',
@@ -421,38 +431,23 @@ def create_category():
             'schema': {
                 'type': 'object',
                 'properties': {
-                    'name': {'type': 'string'},
-                    'description': {'type': 'string'}
+                    'photo_order': {
+                        'type': 'array',
+                        'items': {'type': 'string'}
+                    }
                 }
             }
         }
     ],
     'responses': {
-        200: {'description': 'Categoria atualizada'},
+        200: {'description': 'Fotos reordenadas com sucesso'},
         400: {'description': 'Dados inválidos'},
         401: {'description': 'Token inválido'},
-        404: {'description': 'Categoria não encontrada'}
+        404: {'description': 'Experiência não encontrada'}
     }
 })
-def update_category(category_id):
-    return proxy_request(SERVICES['experience'], f'/api/categories/{category_id}', 'PUT')
-
-@gateway_bp.route('/categories/<category_id>', methods=['DELETE'])
-@swag_from({
-    'tags': ['Categories'],
-    'summary': 'Deletar categoria',
-    'security': [{'Bearer': []}],
-    'parameters': [
-        {'name': 'category_id', 'in': 'path', 'type': 'integer', 'required': True}
-    ],
-    'responses': {
-        200: {'description': 'Categoria deletada'},
-        401: {'description': 'Token inválido'},
-        404: {'description': 'Categoria não encontrada'}
-    }
-})
-def delete_category(category_id):
-    return proxy_request(SERVICES['experience'], f'/api/categories/{category_id}', 'DELETE')
+def reorder_experience_photos(experience_id):
+    return proxy_request(SERVICES['experience'], f'/api/experiences/{experience_id}/photos/reorder', 'PUT')
 
 # Rotas do Review Service
 @gateway_bp.route('/reviews', methods=['GET'])
@@ -695,34 +690,48 @@ def unified_search():
 @gateway_bp.route('/admin/experiences/bulk-upload', methods=['POST'])
 @swag_from({
     'tags': ['Admin'],
-    'summary': 'Upload em lote de experiências via planilha',
+    'summary': 'Upload em lote de experiências',
     'security': [{'Bearer': []}],
     'parameters': [
-        {
-            'name': 'file',
-            'in': 'formData',
-            'type': 'file',
-            'required': True,
-            'description': 'Arquivo Excel (.xlsx, .xls) ou CSV (.csv)'
-        },
-        {
-            'name': 'created_by',
-            'in': 'query',
-            'type': 'string',
-            'description': 'ID do admin que fez o upload'
-        }
+        {'name': 'file', 'in': 'formData', 'type': 'file', 'required': True}
     ],
     'responses': {
-        201: {'description': 'Upload concluído com sucesso'},
-        400: {'description': 'Arquivo inválido ou dados incorretos'},
-        401: {'description': 'Token inválido'},
-        403: {'description': 'Acesso negado - apenas admins'},
-        500: {'description': 'Erro interno'}
+        201: {'description': 'Experiências criadas com sucesso'},
+        400: {'description': 'Arquivo inválido'},
+        401: {'description': 'Token inválido'}
     }
 })
 def admin_bulk_upload_experiences():
     """Upload em lote de experiências via planilha"""
-    return proxy_request(SERVICES['experience'], '/api/admin/experiences/bulk-upload', 'POST')
+    try:
+        # Verificar se há arquivo
+        if 'file' not in request.files:
+            return jsonify({'error': 'Nenhum arquivo enviado'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'Nenhum arquivo selecionado'}), 400
+        
+        # Preparar dados para enviar ao experience-service
+        files = {'file': (file.filename, file.stream, file.content_type)}
+        headers = {'Authorization': request.headers.get('Authorization', '')}
+        
+        # Fazer requisição direta ao experience-service
+        response = requests.post(
+            f"{SERVICES['experience']}/api/admin/experiences/bulk-upload",
+            files=files,
+            headers=headers,
+            timeout=120
+        )
+        
+        return response.json(), response.status_code
+        
+    except requests.exceptions.Timeout:
+        return jsonify({'error': 'Timeout na requisição'}), 504
+    except requests.exceptions.ConnectionError:
+        return jsonify({'error': 'Serviço indisponível'}), 503
+    except Exception as e:
+        return jsonify({'error': f'Erro interno do gateway: {str(e)}'}), 500
 
 @gateway_bp.route('/admin/experiences/template', methods=['GET'])
 @swag_from({
