@@ -8,7 +8,7 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   (window.location.hostname === 'taiglo.vercel.app' 
     ? 'https://taiglo.vercel.app/api'
-    : `${window.location.protocol}//${window.location.hostname}:3000/api`)
+    : `${window.location.protocol}//${window.location.hostname}/api`)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
